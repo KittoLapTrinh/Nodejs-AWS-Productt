@@ -31,11 +31,6 @@ app.set('view engine ', 'ejs');
 app.use(express.json({extended: false}))
 app.set('views' , './views');
 
-// app.get('/', (req,res) => {
-//     return res.render('index', {data: data});
-// })
-
-
 // Cấu hình AWS
 process.env.AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE = "1"
 AWS.config.update({
@@ -44,7 +39,7 @@ AWS.config.update({
     secretAccessKey: process.env.SECRET_ACCESS_KEY,
 });
 const s3 = new AWS.S3();
-const dynamodb = new AWS. DynamoDB.DocumentClient(); 
+const dynamodb = new AWS.DynamoDB.DocumentClient(); 
 const bucketName = process.env.S3_BUCKET_NAME;
 const tableName = process.env.DYNAMODB_TABLE_NAME;
 
@@ -72,13 +67,24 @@ app.get('/', async (req, res) => {
     }
   });
   
-  app.post("/save", upload.single('image'), (req, res) => {
+  app.post("/save", upload.single('image'), async (req, res) => {
     // Middleware upload.single("image") đảm bảo chỉnh định rằng field có name là "image" được upload
     // Xử lý việc lưu trữ dữ liệu vào DynamoDB sau khi upload file
     try{
         const maSanPham = req.body.maSanPham;
         const tenSanPham = req.body.tenSanPham;
         const soLuong = Number(req.body.soLuong);
+
+        const existingRecord = await dynamodb.get({
+            TableName: tableName,
+            Key: {
+                maSanPham: maSanPham
+            }
+        }).promise();
+
+        if (existingRecord.Item) {
+            return res.status(400).send('Mã san pham đã tồn tại.');
+        }
 
         const image = req.file?.originalname.split(".");
         const fileType = image[image.length - 1];
@@ -155,41 +161,8 @@ app.get('/', async (req, res) => {
 
 
 
+
 app.listen(3000, () =>{
     console.log("Running in port 3000..")
 })
-
-
-
-
-
-
-
-
-
-// app.post('/save', upload.fields([]), (req, res) => {
-//     const maSanPham = Number(req.body.maSanPham);
-//     const tenSanPham = (req.body.tenSanPham);
-//     const soLuong = Number(req.body.soLuong);
-   
-//     const params = {
-//         "maSanPham": maSanPham,
-//         "tenSanPham": tenSanPham,
-//         "soLuong": soLuong
-//     };
-
-//     data.push(params)
-
-//     return res.redirect('/')
-
-// });
-
-
-
-// const express = require('express');
-// const multer = require('multer');
-// const upload = require('./multerConfig'); // Import middleware multerConfig (đã cấu hình trước)
-// const { log } = require('console')
-
-
 
